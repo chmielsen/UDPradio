@@ -1,0 +1,46 @@
+Wojciech Chmiel 305187 Radio Sieciowe
+
+Opis naglowkow wiadomosci (string znajduje sie cudzyslowie):
+    - prosba o ID: "RequestTransmitterID" (common.h, l.19)
+    - odpowiedz z ID: format z printfa "%s\" %s v:%s \"%s", programName, MCAST_ADDR, VERSION, NAME,
+            (nadajnik.c, l.111)
+    - prosba o retransmisje: "Retransmit %d", gdzie %d to nr paczki (common.h, l.20) 
+    - paczka: Pierwsze  MAX_PACKAGE_NR_LENGTH + 1 zajmuje liczba oznaczajca nr paczki,
+                pozniej znajduja sie informacje. (nadajnik.c, l.142 - 148)
+      MAX_PACKAGE_NR_LENGTH = 12 (common.h)
+    - Retransmisja j/w
+
+Opis dzialania programu:
+    Odbiornik:
+        # stale watki:
+            - nasluchiwanie stacji radiowych (glowny)
+            - wysylanie prosb o identyfikacje
+            - nasluchwianie na UI_PORT
+        # chwilowe:
+            - odbior danych(muzyki) od stacji
+            - wypisywanie na STDOUT 
+        Po zidentyfikowaniu pierwszej stacji, albo pozniej, gdy zmienimy stacje przez
+        telnet program odpala nowy watek, odpowiedzialny za odbior danych od radia. Ten
+        sam watek tworzy nowy watek, odpowiedzialny za wypisywanie danych na STDOUT.
+        Program ktory wypisuje, czeka az bufor bedzie zapelniony w 75% (BUFFER_FILLED).
+        Bufor zdefiniowany jest w radiobuffer.h. Jest to Chunk*, gdzie jeden Chunk zawiera informacje
+        o pakiecie ktory reprezentuje wielkosc jednego pakietu od radia. Wielkosc pakietu wyliczana 
+        po otrzymaniu pierwszego pakietu z danymi. Bufor dziala na zasadzie round-robin i dodatkowo 
+        jesli dostanie paczke, gdzie roznica pomiedzy najwieksza paczka w buforze a ta o ktorej mowa 
+        bedzie wieksza od 2 * rozmiar buforu, to resetuje caly bufor (uznalem, ze nie ma sensu czekac,
+        bo i tak nie  dostaniemy tych pakietow). Niestety nie zdazylem zrobic prosb o retransmisje danych, 
+        czego bardzo zaluje. 
+    Nadajnik:
+        # watki(wszystkie stale):
+            - odbieranie prosb o ID i retransmisje
+            - wysylanie retransmisji
+            - wysylanie danych(glowny))
+        Bufor czyta dane z STDIN, pakuje je w paczki po PSIZE bajtow i wysyla w swiat. Paczki wyslane
+        Zapisuje w Archiverze (archiver.h). Archiver jest podobny do Bufora z odbiornika powyzej, ale
+        udostepnia zapisywanie paczki na koniec i dostep do k-tej. Dodatkowo nadajnik trzyma odbiorniki,
+        ktore prosily o retransmisje w kolejce zbudowanej na liscie wskaznikowej (queue.h). Konczy
+        prace po wczytaniu piosenki. 
+
+    Program testowany w sieci akademickiej DS6, dzialal. Mozna odpalic programy na jednym komputerze.
+    Proby z dwoma nadajnikami tez przechodzil pomyslnie. 
+
